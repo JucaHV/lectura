@@ -85,7 +85,7 @@
     </div>
 
     <script>
-        // Configuración - REEMPLAZA ESTOS VALORES
+        // ConfiguraciÃ³n - REEMPLAZA ESTOS VALORES
         var accessToken = "bd54bd5de61c56482602fc9ec7cce2cefb805fb3"; // Reemplaza con tu token real
         var deviceID = "0a10aced202194944a055ca4"; // Reemplaza con tu device ID
         var url = "https://api.particle.io/v1/devices/" + deviceID + "/lectura";
@@ -95,7 +95,7 @@
         var errorCount = 0;
         var maxErrors = 3;
         var isMobile = /Mobi|Android/i.test(navigator.userAgent);
-        var updateInterval = isMobile ? 3000 : 2000; // Intervalo más largo para móviles
+        var updateInterval = isMobile ? 3000 : 2000; // Intervalo mÃ¡s largo para mÃ³viles
 
         function updateStatus(message, isError = false) {
             var statusEl = document.getElementById('status');
@@ -127,7 +127,7 @@
                 value: 0,
                 min: 0,
                 max: 4095,
-                title: "LECTURA ANALÓGICA",
+                title: "LECTURA ANALÃ“GICA",
                 label: "Valor ADC",
                 decimals: 0,
                 titleFontSize: isMobile ? 14 : 16,
@@ -168,7 +168,7 @@
                         gLectura.refresh(lectura);
                         gVoltaje.refresh(voltaje);
 
-                        updateStatus("Última lectura: " + new Date().toLocaleTimeString());
+                        updateStatus("Ãšltima lectura: " + new Date().toLocaleTimeString());
                     } catch (e) {
                         updateStatus("Error en los datos recibidos", true);
                     }
@@ -177,7 +177,7 @@
                 error: function (xhr, status, error) {
                     errorCount++;
                     if (errorCount >= maxErrors) {
-                        updateStatus("Error de conexión. Verifica tu dispositivo.", true);
+                        updateStatus("Error de conexiÃ³n. Verifica tu dispositivo.", true);
                         gLectura.refresh(NaN);
                         gVoltaje.refresh(NaN);
                         return;
@@ -188,10 +188,10 @@
             });
         }
 
-        // Optimización para móviles
+        // OptimizaciÃ³n para mÃ³viles
         function handleVisibilityChange() {
             if (document.hidden) {
-                // Pausar actualizaciones cuando la pestaña no está visible
+                // Pausar actualizaciones cuando la pestaÃ±a no estÃ¡ visible
                 clearTimeout(window.readingTimeout);
             } else {
                 // Reanudar cuando vuelve a ser visible
@@ -199,19 +199,19 @@
             }
         }
 
-        // Inicialización optimizada
+        // InicializaciÃ³n optimizada
         $(document).ready(function () {
-            // Detectar cambios de visibilidad (útil para móviles)
+            // Detectar cambios de visibilidad (Ãºtil para mÃ³viles)
             document.addEventListener('visibilitychange', handleVisibilityChange, false);
 
             initGauges();
             updateStatus("Conectando al dispositivo...");
 
-            // Pequeño retraso para permitir la renderización inicial
+            // PequeÃ±o retraso para permitir la renderizaciÃ³n inicial
             setTimeout(getReading, 500);
         });
 
-        // Manejar correctamente el cierre/recarga de la página
+        // Manejar correctamente el cierre/recarga de la pÃ¡gina
         window.addEventListener('beforeunload', function () {
             clearTimeout(window.readingTimeout);
         });
