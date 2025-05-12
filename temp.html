@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Monitor de Sensores</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/justgage/1.4.0/justgage.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+            text-align: center;
+            padding: 10px;
+            margin: 0;
+            background-color: #f5f5f5;
+            touch-action: manipulation;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 1.5rem;
+            margin: 15px 0;
+        }
+
+        .gauge-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .gauge {
+            width: 95%;
+            max-width: 350px;
+            height: 220px;
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .status {
+            margin: 15px auto;
+            padding: 8px 12px;
+            border-radius: 8px;
+            display: inline-block;
+            font-size: 0.9rem;
+            max-width: 90%;
+        }
+
+        @media (min-width: 768px) {
+            .gauge-container {
+                flex-direction: row;
+                justify-content: center;
+                gap: 20px;
+            }
+
+            .gauge {
+                width: 45%;
+                max-width: 300px;
+                height: 250px;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Monitor de Sensores</h1>
+    <div id="status" class="status"></div>
+    <div class="gauge-container">
+        <div id="gauge-lectura" class="gauge"></div>
+        <div id="gauge-voltaje" class="gauge"></div>
+    </div>
+
+    <script>
+        // Configuración - REEMPLAZA ESTOS VALORES
+        var accessToken = "bd54bd5de61c56482602fc9ec7cce2cefb805fb3"; // Reemplaza con tu token real
+        var deviceID = "0a10aced202194944a055ca4"; // Reemplaza con tu device ID
+        var url = "https://api.particle.io/v1/devices/" + deviceID + "/lectura";
+
+        // Variables globales
+        var gLectura, gVoltaje;
+        var errorCount = 0;
+        var maxErrors = 3;
+        var isMobile = /Mobi|Android/i.test(navigator.userAgent);
+        var updateInterval = isMobile ? 3000 : 2000; // Intervalo más largo para móviles
+
+        function updateStatus(message, isError = false) {
+            var statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.style.backgroundColor = isError ? '#ffebee' : '#e8f5e9';
+            statusEl.style.color = isError ? '#c62828' : '#2e7d32';
+        }
+
+        function initGauges() {
+            var gaugeOptions = {
+                levelColors: ["#4CAF50", "#F44336"],
+                gaugeWidthScale: 0.6,
+                showMinMax: false,
+                pointer: true,
+                pointerOptions: {
+                    toplength: 10,
+                    bottomlength: 10,
+                    bottomwidth: 6,
+                    color: '#333'
+                },
+                titleFontColor: '#333',
+                valueFontColor: '#222',
+                labelFontColor: '#555'
+            };
+
+            gLectura = new JustGage({
+                ...gaugeOptions,
+                id: "gauge-lectura",
+                value: 0,
+                min: 0,
+                max: 4095,
+                title: "LECTURA ANALÓGICA",
+                label: "Valor ADC",
+                decimals: 0,
+                titleFontSize: isMobile ? 14 : 16,
+                valueFontSize: isMobile ? 28 : 32,
+                labelFontSize: isMobile ? 14 : 16
+            });
+
+            gVoltaje = new JustGage({
+                ...gaugeOptions,
+                id: "gauge-voltaje",
+                value: 0,
+                min: 0,
+                max: 3.3,
+                title: "VOLTAJE",
+                label: "Volts",
+                decimals: 2,
+                symbol: 'V',
+                titleFontSize: isMobile ? 14 : 16,
+                valueFontSize: isMobile ? 28 : 32,
+                labelFontSize: isMobile ? 14 : 16
+            });
+        }
+
+        function getReading() {
+            $.ajax({
+                url: url,
+                type: "GET",
+                timeout: 5000, // Timeout de 5 segundos
+                beforeSend: function (xhr) {
+                    xhr.setRequestHeader("Authorization", "Bearer " + accessToken);
+                },
+                success: function (data) {
+                    errorCount = 0;
+                    try {
+                        var lectura = parseFloat(data.result);
+                        var voltaje = (lectura / 4095 * 3.3).toFixed(2);
+
+                        gLectura.refresh(lectura);
+                        gVoltaje.refresh(voltaje);
+
+                        updateStatus("Última lectura: " + new Date().toLocaleTimeString());
+                    } catch (e) {
+                        updateStatus("Error en los datos recibidos", true);
+                    }
+                    setTimeout(getReading, updateInterval);
+                },
+                error: function (xhr, status, error) {
+                    errorCount++;
+                    if (errorCount >= maxErrors) {
+                        updateStatus("Error de conexión. Verifica tu dispositivo.", true);
+                        gLectura.refresh(NaN);
+                        gVoltaje.refresh(NaN);
+                        return;
+                    }
+                    updateStatus("Conectando... (" + errorCount + "/" + maxErrors + ")", true);
+                    setTimeout(getReading, 3000);
+                }
+            });
+        }
+
+        // Optimización para móviles
+        function handleVisibilityChange() {
+            if (document.hidden) {
+                // Pausar actualizaciones cuando la pestaña no está visible
+                clearTimeout(window.readingTimeout);
+            } else {
+                // Reanudar cuando vuelve a ser visible
+                getReading();
+            }
+        }
+
+        // Inicialización optimizada
+        $(document).ready(function () {
+            // Detectar cambios de visibilidad (útil para móviles)
+            document.addEventListener('visibilitychange', handleVisibilityChange, false);
+
+            initGauges();
+            updateStatus("Conectando al dispositivo...");
+
+            // Pequeño retraso para permitir la renderización inicial
+            setTimeout(getReading, 500);
+        });
+
+        // Manejar correctamente el cierre/recarga de la página
+        window.addEventListener('beforeunload', function () {
+            clearTimeout(window.readingTimeout);
+        });
+    </script>
+</body>
+</html>
